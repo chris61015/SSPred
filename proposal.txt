@@ -1,0 +1,68 @@
+Predict Protein Structure using Machine Lerning techniques
+
+file:///Users/chris61015/Downloads/ijms-17-02118.pdf
+https://github.com/alevchuk/kmercount-classifier
+
+http://www.tandfonline.com/doi/abs/10.1080/08927020701377070?src=recsys&journalCode=gmos20
+https://cs224d.stanford.edu/reports/LeeNguyen.pdf
+https://arxiv.org/pdf/1603.06430.pdf
+http://file.scirp.org/pdf/JBiSE_2016042713533805.pdf
+http://msb.embopress.org/content/12/7/878
+
+
+http://biorxiv.org/content/early/2016/09/16/073239
+
+Deep Learning => Classification of sequence of protein
+	=> find sub-classification
+	=> What parameters could we use?
+
+
+1. Sequence Database: Evolutionary => easier
+2. Scoring functions
+3. Classification => “Classification of secondary structure”
+4. K-means
+
+
+
+Clustering on Environmental Variable=>String match
+Ramachandran
+http://www2.warwick.ac.uk/fac/sci/moac/people/students/peter_cock/python/ramachandran/other/
+http://www.proteinstructures.com/Structure/Structure/Ramachandran-plot.html
+
+https://www.quora.com/What-is-a-Ramachandran-plot-How-do-you-read-one-and-what-information-can-you-learn-from-one
+
+http://foldit.wikia.com/wiki/Secondary_structure_prediction_tools
+
+
+Ramachandran Plot:
+
+
+
+
+Why should we do clustering? Isn’t is a deterministic model? Or is it OK to do clustering?
+
+Find all psi, phi means knowing the structure?
+
+
+
+Step 1. Find several molecules with similar structure(How to find structure/Is random ok?)
+Step 2. Divide psi degrees and phi degrees into sub slot respectively
+Step 3. Count the occurence probability of a slot
+Step 4. Use a probability model to depict joint distribution
+Step 5. Use a ML algorithm(Soft-margin SVM) to generalize prob
+Step 6. Using test dataset to validate data
+Step 7. Explain the result
+
+
+Q1. When drawing a Ramachandran-plot for an unknown protein, is it likely that we could get all phi-psi but know nothing about whether it belongs to alpha or beta? Or we will get phi-psi and its label (belong to alpha, beta, etc) altogether?
+
+Q2. Can we use CATH to find a bunch of proteins with similar structure? Are proteins with similar structure share similar Ramachandran-plot? Or we could randomly choose any protein do conduct our classification model?
+
+Q3. Our results could be slots which are assigned with probabilities that whether a specific psi-phi angle belongs to alpha or beta. In this case, how could we take advantage of it to help us classify unknown proteins? Or we do not need to do that?
+
+Q4. I have heard that you’ve mentioned about clustering the Rakmachandran-Plot. Clearly I know how to cluster data, but I wasn’t clear how could we take the advantage of it. I mean, if I find a best K in Kmeans to cluster a Rakmachandran-Plot for a protein, what should I do next? 
+
+Thanks for your help.
+
+
+
