@@ -8,15 +8,17 @@ from toolbox import cleanATOM
 init()
 
 pdblist = []
-with open("pdblist.txt", 'r') as f:
+with open("trainpdblist.txt", 'r') as f:
 	lst = f.read()
 	pdblist.extend(lst.split(','))
 
 print(pdblist)
 
-with open('output.txt', 'w') as output:
+with open('trainingSet.txt', 'w') as output:
 	lines = []
 	for pdb in pdblist:
+		pdb = pdb.strip(' \n')
+		print(pdb)
 		pdbName = "%s.pdb" % pdb
 		cleanpdb = "%s.clean.pdb" % pdb
 		alphaName = "%s_alpha.txt" % pdb

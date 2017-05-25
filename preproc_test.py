@@ -4,7 +4,7 @@ from pymol import stored, cmd
 
 pdblist = []
 
-fnl = "./traindata/trainpdblist.txt"
+fnl = "./testdata/predpdblist.txt"
 with open(fnl, 'r') as f:
 	lst = f.read()
 	pdblist.extend(lst.split(','))
@@ -15,7 +15,7 @@ for pdb in pdblist:
 	print (pdb)
 	cmd.fetch(pdb, async=0)
 	
-	pdbName = "./traindata/%s.pdb" % pdb
+	pdbName = "./testdata/%s.pdb" % pdb
 	cmd.save(pdbName)
 	# get the sequence from PyMOL
 	stored.alphaSeq = []
@@ -24,8 +24,8 @@ for pdb in pdblist:
 	stored.betaSeq = []
 	cmd.iterate( "ss s" , "stored.betaSeq.append(resi)")
 
-	fna = "./traindata/%s_alpha.txt" % pdb
-	fnb = "./traindata/%s_beta.txt" % pdb
+	fna = "./testdata/%s_alpha.txt" % pdb
+	fnb = "./testdata/%s_beta.txt" % pdb
 	with open(fna, 'w') as fa:
 		sa = set(stored.alphaSeq)
 		line = ','.join(sorted(sa, key=int))
