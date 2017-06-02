@@ -1,14 +1,46 @@
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model,  load_model
 from keras.layers import Dense,Activation,Bidirectional, LSTM, RepeatVector, Input 
 from keras.utils import np_utils, generic_utils
 import numpy as np
-import os
+import os, sys
 
 def equal_float(a, b):
     #return abs(a - b) <= sys.float_info.epsilon
     return abs(a - b) <= 1E-3 #see edit below for more info
 
-def main():
+def fetchModel(isNew, trainX, trainY):
+	if isNew == True:
+		#feature extraction
+		# this is the size of our encoded representations
+		encoding_dim = 10  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
+		# this is our input placeholder
+		input_seq = Input(shape=(20,))
+		# "encoded" is the encoded representation of the input
+		encoded = Dense(encoding_dim, activation='relu')(input_seq)
+		# "decoded" is the lossy reconstruction of the input
+		decoded = Dense(20, activation='sigmoid')(encoded)
+
+		# this model maps an input to its reconstruction
+		autoencoder = Model(input=input_seq, output=decoded)
+
+		autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+		autoencoder.fit(trainX,trainX,epochs=1,shuffle=True)
+
+		feTrainX = autoencoder.predict(trainX)
+
+		model = Sequential()
+		model.add(Dense(12, input_dim=20))
+		model.add(Dense(8))
+		model.add(Dense(3))
+		model.add(Activation('softmax'))
+		model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+		model.fit(feTrainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
+		model.save('my_model.h5') 
+	else:
+		model = load_model('my_model.h5')
+	return model
+
+def main(argv):
 	ar = np.loadtxt('trainingSet.txt',delimiter=',')
 
 	tempX = ar[:,0]	
@@ -22,31 +54,13 @@ def main():
 	categorical_labels = np_utils.to_categorical(trainY, num_classes=3)
 
 
-	#feature extraction
-	# this is the size of our encoded representations
-	encoding_dim = 10  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
-	# this is our input placeholder
-	input_seq = Input(shape=(20,))
-	# "encoded" is the encoded representation of the input
-	encoded = Dense(encoding_dim, activation='relu')(input_seq)
-	# "decoded" is the lossy reconstruction of the input
-	decoded = Dense(20, activation='sigmoid')(encoded)
+	if argv != 0: 
+		isNew = True
+	else:
+		isNew = False
 
-	# this model maps an input to its reconstruction
-	autoencoder = Model(input=input_seq, output=decoded)
+	model = fetchModel(isNew, trainX, categorical_labels)
 
-	autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-	autoencoder.fit(trainX,trainX,epochs=1,shuffle=True)
-
-	feTrainX = autoencoder.predict(trainX)
-
-	model = Sequential()
-	model.add(Dense(12, input_dim=20))
-	model.add(Dense(8))
-	model.add(Dense(3))
-	model.add(Activation('softmax'))
-	model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-	model.fit(feTrainX, categorical_labels, epochs=1,shuffle=True,validation_split=0.1)
 
 
 	accuracis = []
@@ -86,7 +100,7 @@ def main():
 	# model.fit(trainX, categorical_labels, epochs=1,shuffle=True,validation_split=0.1)
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv[1])
 
 
 # from sklearn.multiclass import OneVsOneClassifier
