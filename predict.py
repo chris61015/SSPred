@@ -1,67 +1,68 @@
 from keras.models import Sequential, Model,  load_model
-from keras.layers import Dense,Activation,Bidirectional, LSTM, RepeatVector, Input 
+from keras.layers import Dense,Activation,Bidirectional, LSTM, RepeatVector, Input, Masking, TimeDistributed,Embedding
 from keras.utils import np_utils, generic_utils
 import numpy as np
 import os, sys
+
+
+MAX_STEPS = 2864
+FILE_CNT  = 1000
 
 def equal_float(a, b):
     #return abs(a - b) <= sys.float_info.epsilon
     return abs(a - b) <= 1E-3 #see edit below for more info
 
-def fetchModel(isNew, trainX, trainY):
+def fetchModel(isNew, trainX, trainY ,windowSize):
+
+	dimension = 2 * windowSize + 1
+
 	if isNew == True:
-		#feature extraction
-		# this is the size of our encoded representations
-		encoding_dim = 10  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
-		# this is our input placeholder
-		input_seq = Input(shape=(20,))
-		# "encoded" is the encoded representation of the input
-		encoded = Dense(encoding_dim, activation='relu')(input_seq)
-		# "decoded" is the lossy reconstruction of the input
-		decoded = Dense(20, activation='sigmoid')(encoded)
-
-		# this model maps an input to its reconstruction
-		autoencoder = Model(input=input_seq, output=decoded)
-
-		autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-		autoencoder.fit(trainX,trainX,epochs=1,shuffle=True)
-
-		feTrainX = autoencoder.predict(trainX)
-
 		model = Sequential()
-		model.add(Dense(12, input_dim=20))
+		model.add(Dense(12, input_shape=(dimension,)))
 		model.add(Dense(8))
 		model.add(Dense(3))
 		model.add(Activation('softmax'))
 		model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-		model.fit(feTrainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
+		model.fit(trainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
+
 		model.save('my_model.h5') 
 	else:
 		model = load_model('my_model.h5')
 	return model
 
 def main(argv):
-	ar = np.loadtxt('trainingSet.txt',delimiter=',')
 
-	tempX = ar[:,0]	
-	trainX = np.zeros((len(tempX),20), dtype=np.int)
+	trainPath = os.path.join(os.getcwd(),"train")
+	numOfFiles = len(os.listdir(trainPath))
 
-	print(len(tempX))
-	for i in range(0,len(tempX)):
-		trainX[i][tempX[i]] = 1
+	trainX = []
+	trainY = []
+	for index, filename in enumerate(os.listdir(trainPath), start=0):
+		filePath = os.path.join(trainPath,filename)
+		ar = np.loadtxt(filePath,delimiter=',')
 
-	trainY = ar[:,1]
+		tempX = ar[:,0]	
+		tempY = ar[:,1]
+		windowSize = 5
+		for index, value in enumerate(tempX, start=windowSize):
+			if index - windowSize >=0 and index + windowSize < len(tempX):
+				tmp = []
+				for slide in range(-windowSize,windowSize+1):
+					tmp.append(tempX[index+slide])
+				trainX.append(tmp)
+				trainY.append(tempY[index])
+
+	trainX = np.array(trainX)
+	trainY = np.array(trainY)
+
 	categorical_labels = np_utils.to_categorical(trainY, num_classes=3)
-
 
 	if argv != 0: 
 		isNew = True
 	else:
 		isNew = False
 
-	model = fetchModel(isNew, trainX, categorical_labels)
-
-
+	model = fetchModel(isNew, trainX, categorical_labels, windowSize)
 
 	accuracis = []
 	path = os.path.join(os.getcwd(),"test")
@@ -69,13 +70,19 @@ def main(argv):
 		filePath = os.path.join(path,filename)
 		ar = np.loadtxt(filePath,delimiter=',')
 
+		testX = []
+		testY = []
 		tempX = ar[:,0]	
-		testX = np.zeros((len(tempX),20), dtype=np.int)
+		tempY = ar[:,1]
+		windowSize = 5
+		for index, value in enumerate(tempX, start=windowSize):
+			if index - windowSize >=0 and index + windowSize < len(tempX):
+				tmp = []
+				for slide in range(-windowSize,windowSize+1):
+					tmp.append(tempX[index+slide])
+				testX.append(tmp)
+				testY.append(tempY[index])
 
-		for i in range(0,len(tempX)):
-			trainX[i][tempX[i]] = 1
-
-		testY = ar[:,1]
 		categorical_labels = np_utils.to_categorical(testY, num_classes=3)
 		scores = model.evaluate(testX, categorical_labels, verbose=0)
 		# print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -86,21 +93,50 @@ def main(argv):
 	print("Mean Of Accuracy: %f" % np.mean(accuracis))
 	print("Variance Of Accuracy: %f" % np.std(accuracis))
 
-
-
-	#bidirectional LSTM
-	# Expected input batch shape: (batch_size, timesteps, data_dim)
-	# model = Sequential()
-	# model.add(LSTM(10, return_sequences=True, input_shape=(20,1)))
-	# model.add(LSTM(10))
-	# model.add(Dense(3))
-	# model.add(Activation('softmax'))
-	# model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
-
-	# model.fit(trainX, categorical_labels, epochs=1,shuffle=True,validation_split=0.1)
-
 if __name__ == '__main__':
 	main(sys.argv[1])
+
+
+		#bidirectional LSTM
+		#Expected input batch shape: (batch_size, timesteps, data_dim)
+		# model = Sequential()
+		# model.add(Masking(mask_value=-1.0, input_shape=(MAX_STEPS,1)))
+		# model.add(LSTM(MAX_STEPS, return_sequences=True))
+		# # model.add(Dense(3))
+		# model.add(Activation('softmax'))
+		# model.compile(loss='categorical_crossentropy', optimizer='rmsprop',metrics=['accuracy'])
+
+		# print(len(trainX), len(trainY))
+
+		# model.fit(trainX, trainY, epochs=1,shuffle=True,validation_split=0.1)
+
+		# #feature extraction
+		# # this is the size of our encoded representations
+		# encoding_dim = 10  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
+		# # this is our input placeholder
+		# input_seq = Input(shape=(20,))
+		# # "encoded" is the encoded representation of the input
+		# encoded = Dense(encoding_dim, activation='relu')(input_seq)
+		# # "decoded" is the lossy reconstruction of the input
+		# decoded = Dense(20, activation='sigmoid')(encoded)
+
+		# # this model maps an input to its reconstruction
+		# autoencoder = Model(input=input_seq, output=decoded)
+
+		# autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+		# autoencoder.fit(trainX,trainX,epochs=1,shuffle=True)
+
+		# feTrainX = autoencoder.predict(trainX)
+
+		# model = Sequential()
+		# model.add(Dense(12, input_dim=20))
+		# model.add(Dense(8))
+		# model.add(Dense(3))
+		# model.add(Activation('softmax'))
+		# model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+		# model.fit(feTrainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
+
+
 
 
 # from sklearn.multiclass import OneVsOneClassifier
