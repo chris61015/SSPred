@@ -5,47 +5,41 @@ import numpy as np
 import os, sys
 
 
-MAX_STEPS = 2864
-FILE_CNT  = 1000
-
-def equal_float(a, b):
-    #return abs(a - b) <= sys.float_info.epsilon
-    return abs(a - b) <= 1E-3 #see edit below for more info
-
 def fetchModel(isNew, trainX, trainY ,windowSize):
 
 	dimension = 2 * windowSize + 1
 
 	if isNew == True:
-		model = Sequential()
-		model.add(Dense(12, input_shape=(dimension,)))
-		model.add(Dense(8))
-		model.add(Dense(3))
-		model.add(Activation('softmax'))
-		model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-		model.fit(trainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
 
-		model.save('my_model.h5') 
+		model = Sequential()		#adding Neural Networks layers one after one 
+		model.add(Dense(12, input_shape=(dimension,)))		#First layer with 12 neurons
+		model.add(Dense(8))									#Second layer with 8 neurons
+		model.add(Dense(3))									#Thrid layer with 3 neurons
+		model.add(Activation('softmax'))					#Softmax will provide probabilities for three options
+		model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])	#call tensorflow to compute
+		model.fit(trainX, trainY, epochs=10,shuffle=True,validation_split=0.1)			#trainging start
+
+		model.save('my_model.h5') 			#save model
 	else:
-		model = load_model('my_model.h5')
+		model = load_model('my_model.h5')	#load model
 	return model
 
 def main(argv):
 
-	trainPath = os.path.join(os.getcwd(),"train")
-	numOfFiles = len(os.listdir(trainPath))
+	trainPath = os.path.join(os.getcwd(),"train")  	#get data from train folder
+	windowSize = 5									#adjust window size to get different result
 
 	trainX = []
 	trainY = []
-	for index, filename in enumerate(os.listdir(trainPath), start=0):
+	for _, filename in enumerate(os.listdir(trainPath), start=0):			#loop through txt file in folder
 		filePath = os.path.join(trainPath,filename)
 		ar = np.loadtxt(filePath,delimiter=',')
 
 		tempX = ar[:,0]	
 		tempY = ar[:,1]
-		windowSize = 5
 		for index, value in enumerate(tempX, start=windowSize):
 			if index - windowSize >=0 and index + windowSize < len(tempX):
+				#generate sliding window dataset
 				tmp = []
 				for slide in range(-windowSize,windowSize+1):
 					tmp.append(tempX[index+slide])
@@ -55,18 +49,21 @@ def main(argv):
 	trainX = np.array(trainX)
 	trainY = np.array(trainY)
 
+	#if we want to use categorical_crossentropy as loss function, we should turn label into one-hot vectors
 	categorical_labels = np_utils.to_categorical(trainY, num_classes=3)
 
+	#To see whether we should retrain model, or just fetch it
 	if argv != 0: 
 		isNew = True
 	else:
 		isNew = False
 
+	#get trained model
 	model = fetchModel(isNew, trainX, categorical_labels, windowSize)
 
 	accuracis = []
 	path = os.path.join(os.getcwd(),"test")
-	for filename in os.listdir(path):
+	for filename in os.listdir(path):											#loop through txt file in folder
 		filePath = os.path.join(path,filename)
 		ar = np.loadtxt(filePath,delimiter=',')
 
@@ -74,9 +71,9 @@ def main(argv):
 		testY = []
 		tempX = ar[:,0]	
 		tempY = ar[:,1]
-		windowSize = 5
 		for index, value in enumerate(tempX, start=windowSize):
 			if index - windowSize >=0 and index + windowSize < len(tempX):
+				#generate sliding window dataset
 				tmp = []
 				for slide in range(-windowSize,windowSize+1):
 					tmp.append(tempX[index+slide])
@@ -89,81 +86,12 @@ def main(argv):
 
 		accuracis.append(scores[1])
 
-
 	print("Mean Of Accuracy: %f" % np.mean(accuracis))
 	print("Variance Of Accuracy: %f" % np.std(accuracis))
 
 if __name__ == '__main__':
 	main(sys.argv[1])
 
+# Ref: 
+# Keras:https://keras.io/
 
-		#bidirectional LSTM
-		#Expected input batch shape: (batch_size, timesteps, data_dim)
-		# model = Sequential()
-		# model.add(Masking(mask_value=-1.0, input_shape=(MAX_STEPS,1)))
-		# model.add(LSTM(MAX_STEPS, return_sequences=True))
-		# # model.add(Dense(3))
-		# model.add(Activation('softmax'))
-		# model.compile(loss='categorical_crossentropy', optimizer='rmsprop',metrics=['accuracy'])
-
-		# print(len(trainX), len(trainY))
-
-		# model.fit(trainX, trainY, epochs=1,shuffle=True,validation_split=0.1)
-
-		# #feature extraction
-		# # this is the size of our encoded representations
-		# encoding_dim = 10  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
-		# # this is our input placeholder
-		# input_seq = Input(shape=(20,))
-		# # "encoded" is the encoded representation of the input
-		# encoded = Dense(encoding_dim, activation='relu')(input_seq)
-		# # "decoded" is the lossy reconstruction of the input
-		# decoded = Dense(20, activation='sigmoid')(encoded)
-
-		# # this model maps an input to its reconstruction
-		# autoencoder = Model(input=input_seq, output=decoded)
-
-		# autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-		# autoencoder.fit(trainX,trainX,epochs=1,shuffle=True)
-
-		# feTrainX = autoencoder.predict(trainX)
-
-		# model = Sequential()
-		# model.add(Dense(12, input_dim=20))
-		# model.add(Dense(8))
-		# model.add(Dense(3))
-		# model.add(Activation('softmax'))
-		# model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-		# model.fit(feTrainX, trainY, epochs=10,shuffle=True,validation_split=0.1)
-
-
-
-
-# from sklearn.multiclass import OneVsOneClassifier
-# from sklearn.svm import LinearSVC
-# import numpy as np
-
-# def equal_float(a, b):
-#     #return abs(a - b) <= sys.float_info.epsilon
-#     return abs(a - b) <= 1E-3 #see edit below for more info
-
-# def main():
-# 	ar = np.loadtxt('output.txt',delimiter=',')
-# 	trainX = ar[:,0:2]
-# 	trainy = ar[:,2]
-
-# 	predX = trainX
-# 	predY = OneVsOneClassifier(LinearSVC(random_state=0)).fit(trainX, trainy).predict(predX)
-	
-# 	seq = ""
-# 	for i in predY:
-# 		if  equal_float(1,i):
-# 			seq+="a"
-# 		elif equal_float(2,i):
-# 			seq+="b"
-# 		else:
-# 			seq+="-"
-# 	print(seq)
-
-# if __name__ == '__main__':
-# 	main()
